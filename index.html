@@ -489,6 +489,44 @@ color:#765360
 display:block;
 animation:appear .7s
 }
+/* MÜZİK ÇALAR */
+.music-player{
+position:fixed;
+bottom:20px;
+right:20px;
+z-index:90;
+background:#ffffffdd;
+backdrop-filter:blur(10px);
+border:1px solid #fff;
+padding:10px 18px;
+border-radius:30px;
+box-shadow:0 10px 30px #9d718025;
+display:flex;
+align-items:center;
+gap:10px;
+font-size:13px;
+color:var(--deep)
+}
+.music-btn{
+background:#dcaabb;
+border:none;
+color:#fff;
+width:34px;
+height:34px;
+border-radius:50%;
+display:grid;
+place-items:center;
+cursor:pointer;
+font-size:14px;
+box-shadow:0 4px 12px #9d718033
+}
+#yt-player{
+position:absolute;
+width:1px;
+height:1px;
+opacity:0;
+pointer-events:none
+}
 /* FOOTER */
 footer{
 text-align:center;
@@ -567,6 +605,11 @@ font-size:68px
 .unit{
 min-width:92px
 }
+.music-player{
+bottom:15px;
+right:15px;
+padding:8px 14px
+}
 }
 </style>
 </head>
@@ -583,7 +626,7 @@ BİZİM HİKÂYEMİZ
 </div>
 <button
 class="enter"
-onclick="document.body.classList.add('ready')">
+onclick="startSite()">
 Hikâyemizi aç ♡
 </button>
 </div>
@@ -710,37 +753,30 @@ Anılarımız 📸
 Telefonundan fotoğraflarını seç.
 Fotoğraflar sayfada anılarınızın yerini doldursun.
 </p>
-<div class="gallery">
-<div class="photo">
-<span>☁️ İlk fotoğrafımız</span>
+
+<div id="gallery" class="gallery">
+<div class="photo"><span>☁️ İlk fotoğrafımız</span></div>
+<div class="photo"><span>♡ En sevdiğimiz an</span></div>
+<div class="photo"><span>✦ Birlikte bir gün</span></div>
+<div class="photo"><span>🌷 Güzel bir anı</span></div>
+<div class="photo"><span>☁️ Sadece biz</span></div>
+<div class="photo"><span>♡ Sonsuza kadar</span></div>
 </div>
-<div class="photo">
-<span>♡ En sevdiğimiz an</span>
-</div>
-<div class="photo">
-<span>✦ Birlikte bir gün</span>
-</div>
-<div class="photo">
-<span>🌷 Güzel bir anı</span>
-</div>
-<div class="photo">
-<span>☁️ Sadece biz</span>
-</div>
-<div class="photo">
-<span>♡ Sonsuza kadar</span>
-</div>
-</div>
+
 <input
 id="picker"
 type="file"
 accept="image/*"
 multiple
-hidden>
+hidden
+onchange="uploadPhotos(this.files)">
+
 <button
 class="add"
-onclick="picker.click()">
+onclick="document.getElementById('picker').click()">
 ＋ Fotoğraflarını seç
 </button>
+<p id="status" style="text-align: center; font-size: 13px; color: #888; margin-top: 10px;"></p>
 </section>
 <!-- ZAMAN SAYACI -->
 <section id="zaman" class="reveal">
@@ -865,6 +901,14 @@ seni seçtiğim için mutluyum. ♡”
 </div>
 </div>
 </section>
+
+<!-- MÜZİK ÇALAR KUTUSU -->
+<div class="music-player">
+  <button class="music-btn" id="musicToggle" onclick="toggleMusic()">▶</button>
+  <span id="musicTitle">Stav4a - Güzelim Bakma Öyle 🎵</span>
+</div>
+<div id="yt-player"></div>
+
 <!-- FOOTER -->
 <footer>
 <div class="footer-names">
@@ -878,25 +922,114 @@ Mustafa & Sevce
 ☁️ Sevgiyle yazılmış küçük bir dijital anı defteri ☁️
 </div>
 </footer>
+
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
-/* FOTOĞRAF SEÇME */
-const picker=document.getElementById('picker');
-const slots=[
-...document.querySelectorAll('.photo')
-];
-picker.addEventListener(
-'change',
-e=>
-[...e.target.files]
-.slice(0,slots.length)
-.forEach(
-(file,i)=>{
-const u=URL.createObjectURL(file);
-slots[i].innerHTML=
-'<img src="'+u+'" alt="Bizim anımız">';
+/* YOUTUBE OYNATICI KONTROLÜ */
+let player;
+let isPlaying = false;
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('yt-player', {
+    videoId: 'WVd6bS3wrM4',
+    playerVars: {
+      'autoplay': 0,
+      'controls': 0,
+      'loop': 1,
+      'playlist': 'WVd6bS3wrM4'
+    },
+    events: {
+      'onStateChange': onPlayerStateChange
+    }
+  });
 }
-)
-);
+
+function onPlayerStateChange(event) {
+  if (event.data == YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    document.getElementById("musicToggle").innerText = "❚❚";
+  } else {
+    isPlaying = false;
+    document.getElementById("musicToggle").innerText = "▶";
+  }
+}
+
+function startSite() {
+  document.body.classList.add('ready');
+  if (player && player.playVideo) {
+    player.playVideo();
+  }
+}
+
+function toggleMusic() {
+  if (!player) return;
+  if (isPlaying) {
+    player.pauseVideo();
+  } else {
+    player.playVideo();
+  }
+}
+
+/* CLOUDINARY FOTOĞRAF YÜKLEME VE BULUT DEPOLAMA */
+const CLOUD_NAME = "yq0pivxs";
+const UPLOAD_PRESET = "wlqxdgan";
+
+document.addEventListener("DOMContentLoaded", loadGallery);
+
+async function uploadPhotos(files) {
+  const status = document.getElementById("status");
+  status.innerText = "Fotoğraflar sunucuya yükleniyor, lütfen bekleyin...";
+
+  for (let file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        saveToGlobalGallery(data.secure_url);
+        displayPhoto(data.secure_url);
+      }
+    } catch (err) {
+      console.error("Yükleme hatası:", err);
+    }
+  }
+  status.innerText = "Fotoğraflar başarıyla yüklendi!";
+  setTimeout(() => status.innerText = "", 3000);
+}
+
+function displayPhoto(url) {
+  const slots = document.querySelectorAll('#gallery .photo');
+  
+  for (let slot of slots) {
+    if (!slot.querySelector('img')) {
+      slot.innerHTML = `<img src="${url}" alt="Bizim anımız">`;
+      return;
+    }
+  }
+
+  const newPhoto = document.createElement("div");
+  newPhoto.className = "photo";
+  newPhoto.innerHTML = `<img src="${url}" alt="Bizim anımız">`;
+  document.getElementById("gallery").appendChild(newPhoto);
+}
+
+function saveToGlobalGallery(url) {
+  let saved = JSON.parse(localStorage.getItem("cloudinary_photos") || "[]");
+  saved.push(url);
+  localStorage.setItem("cloudinary_photos", JSON.stringify(saved));
+}
+
+function loadGallery() {
+  let saved = JSON.parse(localStorage.getItem("cloudinary_photos") || "[]");
+  saved.forEach(url => displayPhoto(url));
+}
+
 /* BİRLİKTE GEÇEN ZAMAN */
 const start=
 new Date('2023-01-05T00:00:00');
@@ -939,6 +1072,7 @@ setInterval(
 tick,
 1000
 );
+
 /* SCROLL ANİMASYONLARI */
 const io=
 new IntersectionObserver(
